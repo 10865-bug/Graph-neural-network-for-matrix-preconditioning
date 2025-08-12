@@ -236,7 +236,7 @@ def main():
         n=test_n, 
         num=100, 
         h_range=[1e-3, 1e-1],
-        only_pentadiagonal=True
+        only_fourth_order=True
     )
     original_cond = []
     preconditioned_cond = []
@@ -295,4 +295,5 @@ def main():
     print(f"FGMRES residual: {np.linalg.norm(A_test_raw @ x_fgmres - b_test):.2e}")
 
 if __name__ == "__main__":
+
     main()
