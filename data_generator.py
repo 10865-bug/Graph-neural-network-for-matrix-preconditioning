@@ -28,12 +28,13 @@ def generate_clean_fourth_order_matrix(n, h):
     A = sp.diags(diagonals, offsets, shape=(n, n)).toarray()
     return A.astype(np.float32)
 
-def generate_test_matrices(n, num=100, h_range=[1e-2, 1e-1], only_pentadiagonal=False):
+def generate_test_matrices(n, num=100, h_range=[1e-2, 1e-1], only_fourth_order=False):
     test_mats = []
     
-    if only_pentadiagonal:
+    if only_fourth_order:
         for _ in range(num):
-            test_mats.append(generate_random_pentadiagonal_matrix(n))
+            h = np.random.uniform(h_range[0], h_range[1])
+            test_mats.append(generate_clean_fourth_order_matrix(n, h))
     else:
         num_dominant = num // 2
         for _ in range(num_dominant):
@@ -152,4 +153,5 @@ def load_stand_train_data(stand_train_dir, max_matrices=50, num_samples_per_matr
     return load_stand_data(stand_train_dir, max_matrices, num_samples_per_matrix)
 
 def load_stand_test_data(stand_test_dir, max_matrices=10, num_samples_per_matrix=20):
+
     return load_stand_data(stand_test_dir, max_matrices, num_samples_per_matrix)
