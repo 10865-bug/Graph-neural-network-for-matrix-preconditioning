@@ -4,22 +4,14 @@ import torch.nn.functional as F
 class ResGCONV(nn.Module):
     def __init__(self, input_dim):  
         super().__init__()
-        self.U = nn.Parameter(torch.empty(input_dim, input_dim))
+        self.U = nn.Parameter(torch.eye(input_dim))  # 单位矩阵初始化
         self.W = nn.Parameter(torch.empty(input_dim, input_dim))
-        nn.init.orthogonal_(self.U)
         nn.init.orthogonal_(self.W)
 
     def forward(self, X, A_hat):
-        batch_size, n, input_dim = X.shape
-
-        # 计算 XU 和 XW
         XU = torch.matmul(X, self.U)  # [batch_size, n, input_dim]
         XW = torch.matmul(X, self.W)  # [batch_size, n, input_dim]
-        
-        # 批量矩阵乘法 AXW
         AXW = torch.bmm(A_hat, XW)    # [batch_size, n, input_dim]
-        
-        # 返回激活后的结果
         return F.relu(XU + AXW)
     
 class GNP(nn.Module):
@@ -42,7 +34,7 @@ class GNP(nn.Module):
         
     def forward(self, b, A_hat, original_sizes):
         """修改后的前向传播，支持不同尺寸的矩阵"""
-        batch_size, max_n = b.size(0), A_hat.size(-1)
+        batch_size = b.size(0)
         
         outputs = []
         for i in range(batch_size):
@@ -59,7 +51,7 @@ class GNP(nn.Module):
             # 编码器处理
             X = self.encoder(b_scaled.unsqueeze(-1))  # [1, n, gconv_dim]
             
-            # 图卷积层（仅处理有效区域）
+            # 图卷积层
             for layer in self.layers:
                 X = layer(X, A_hat_i)
             
