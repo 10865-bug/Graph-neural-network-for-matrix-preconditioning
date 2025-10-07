@@ -4,7 +4,7 @@ import torch.nn.functional as F
 class ResGCONV(nn.Module):
     def __init__(self, input_dim):  
         super().__init__()
-        self.U = nn.Parameter(torch.eye(input_dim))  # 单位矩阵初始化
+        self.U = nn.Parameter(torch.eye(input_dim)) 
         self.W = nn.Parameter(torch.empty(input_dim, input_dim))
         nn.init.orthogonal_(self.W)
 
@@ -33,31 +33,26 @@ class GNP(nn.Module):
         self.to(device)
         
     def forward(self, b, A_hat, original_sizes):
-        """修改后的前向传播，支持不同尺寸的矩阵"""
         batch_size = b.size(0)
         
         outputs = []
         for i in range(batch_size):
-            n = original_sizes[i]  # 每个样本的实际尺寸
+            n = original_sizes[i]
             
-            # 只处理实际尺寸部分
             b_i = b[i, :n].unsqueeze(0)  # [1, n]
             A_hat_i = A_hat[i, :n, :n].unsqueeze(0)  # [1, n, n]
             
-            # 输入归一化（基于实际尺寸）
             tau = torch.norm(b_i, dim=1, keepdim=True) + 1e-8
             b_scaled = b_i * (torch.sqrt(torch.tensor(n, device=self.device)) / tau)
             
-            # 编码器处理
             X = self.encoder(b_scaled.unsqueeze(-1))  # [1, n, gconv_dim]
             
-            # 图卷积层
             for layer in self.layers:
                 X = layer(X, A_hat_i)
             
-            # 解码器输出
             decoded = self.decoder(X).squeeze(-1)  # [1, n]
             result = decoded * (tau / torch.sqrt(torch.tensor(n, device=self.device)))
             outputs.append(result.squeeze(0))  # [n]
         
         return outputs
+
