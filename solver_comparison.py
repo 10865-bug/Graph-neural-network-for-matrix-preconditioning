@@ -12,7 +12,7 @@ def run_gmres(A, b, M=None, tol=1e-6, m=50, maxiter=1000):
     
     total_iters = 0
     for _ in range(maxiter // m):
-        V = [r0 / (beta + 1e-12)]  # 防止除零
+        V = [r0 / (beta + 1e-12)] 
         Z = []
         H = np.zeros((m+1, m), dtype=np.float64)
         
@@ -25,19 +25,17 @@ def run_gmres(A, b, M=None, tol=1e-6, m=50, maxiter=1000):
             
             w = A @ zj
             
-            # 修正正交化过程
             for i in range(j+1):
                 H[i, j] = np.dot(w, V[i])
                 w -= H[i, j] * V[i]
             
             h_norm = norm(w)
-            if h_norm < 1e-12:  # 提前终止避免除零
+            if h_norm < 1e-12: 
                 break
             H[j+1, j] = h_norm
-            V.append(w / (h_norm + 1e-12))  # 防止除零
+            V.append(w / (h_norm + 1e-12))
             
-        # 检查 H 的有效维度
-        actual_m = j + 1  # 实际生成的Krylov子空间维度
+        actual_m = j + 1 
         if actual_m == 0:
             break
             
@@ -64,3 +62,4 @@ def run_gmres(A, b, M=None, tol=1e-6, m=50, maxiter=1000):
         total_iters += actual_m
     
     return xm.astype(np.float32), total_iters
+
