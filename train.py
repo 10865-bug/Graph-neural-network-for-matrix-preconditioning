@@ -67,9 +67,9 @@ def dynamic_collate(batch):
 def estimate_inverse(model, A, device='cpu'):
     if isinstance(A, np.ndarray):
         A = torch.tensor(A, dtype=torch.float32, device=device)
-    n = A.shape[-1]  # 实际矩阵尺寸
+    n = A.shape[-1] 
     I = torch.eye(n).to(device).float()
-    A_tensor = A.unsqueeze(0) if A.dim() == 2 else A  # 确保形状为 [1, n, n]
+    A_tensor = A.unsqueeze(0) if A.dim() == 2 else A 
     
     estimated_inverse = []
     for i in range(n):
@@ -78,7 +78,7 @@ def estimate_inverse(model, A, device='cpu'):
             x_hat_list = model(e_i, A_tensor, [n]) 
             x_hat = x_hat_list[0] 
         
-        estimated_inverse.append(x_hat.squeeze().cpu().numpy())  # 现在 x_hat 是张量
+        estimated_inverse.append(x_hat.squeeze().cpu().numpy())  
     
     return np.stack(estimated_inverse, axis=1)
 
@@ -86,10 +86,10 @@ def calculate_spectral(model, reference_matrix, device):
     if isinstance(reference_matrix, torch.Tensor):
         reference_matrix = reference_matrix.cpu().numpy()
     
-    A_norm = normalize_matrix(reference_matrix)  # 确保 A_norm 的形状为 [n, n]
+    A_norm = normalize_matrix(reference_matrix) 
     A_norm_tensor = torch.tensor(A_norm, dtype=torch.float32, device=device)
     if A_norm_tensor.dim() == 2:
-        A_norm_tensor = A_norm_tensor.unsqueeze(0)  # 确保 A_norm_tensor 的形状为 [1, n, n]
+        A_norm_tensor = A_norm_tensor.unsqueeze(0)  
     
     A_inv_estimated = estimate_inverse(model, A_norm_tensor, device)
     A_inv_estimated = torch.tensor(A_inv_estimated, dtype=torch.float32).to(device)
@@ -119,10 +119,10 @@ def train_and_validate(model, optimizer, scheduler, epochs, train_loader, val_lo
     spectral_data = {'max': [], 'min': []}  
     prev_train_loss = float('inf')  
     reference_matrix = train_loader.dataset.samples[0][2].numpy()
-    lr_history = []  # 记录学习率变化
+    lr_history = []  
     
     # L1正则化系数
-    l1_lambda = 1e-3  # 可调整的参数
+    l1_lambda = 1e-3 
 
     for epoch in range(epochs):
         model.train()
@@ -132,23 +132,18 @@ def train_and_validate(model, optimizer, scheduler, epochs, train_loader, val_lo
             
             b_tensor = b_tensor.to(device)
             K_norm_tensor = K_norm_tensor.to(device)
-            x_tensor = x_tensor.to(device)  # 提前移动目标张量到设备
+            x_tensor = x_tensor.to(device) 
             
-            # 调用模型时传递 original_sizes
             output = model(b_tensor, K_norm_tensor, original_sizes)
             
-            # 计算MSE损失
             mse_loss = 0
             for i, n in enumerate(original_sizes):
-                # 确保只比较实际尺寸部分
                 mse_loss += F.l1_loss(output[i][:n], x_tensor[i, :n])
-            
-            # 计算L1正则化项
+
             l1_reg = torch.tensor(0., requires_grad=True).to(device)
             for param in model.parameters():
                 l1_reg = l1_reg + torch.norm(param, 1)
             
-            # 总损失 = MSE损失 + L1正则化项
             loss = mse_loss + l1_lambda * l1_reg
             
             optimizer.zero_grad()
@@ -156,7 +151,6 @@ def train_and_validate(model, optimizer, scheduler, epochs, train_loader, val_lo
             optimizer.step()
             total_train_loss += loss.item()
         
-        # 更新学习率
         if scheduler is not None:
             scheduler.step()
             lr_history.append(optimizer.param_groups[0]['lr'])
@@ -172,13 +166,11 @@ def train_and_validate(model, optimizer, scheduler, epochs, train_loader, val_lo
                 
                 b_val = b_val.to(device)
                 K_norm_val = K_norm_val.to(device)
-                x_val = x_val.to(device)  # 提前移动目标张量到设备
+                x_val = x_val.to(device) 
                 
-                # 调用模型时传递 original_sizes
                 outputs = model(b_val, K_norm_val, original_sizes_val)
                 
                 for i, n in enumerate(original_sizes_val):
-                    # 确保只比较实际尺寸部分，验证时只使用MSE损失
                     total_val_loss += F.l1_loss(outputs[i][:n], x_val[i, :n]).item()
         
         avg_val_loss = total_val_loss / len(val_loader.dataset)
@@ -200,7 +192,7 @@ def train_and_validate(model, optimizer, scheduler, epochs, train_loader, val_lo
     
     plot_loss(train_losses, val_losses, save_dir=save_dir)
     plot_spectral_radius(spectral_data, save_dir=save_dir)
-    plot_learning_rate(lr_history, save_dir=save_dir)  # 绘制学习率曲线
+    plot_learning_rate(lr_history, save_dir=save_dir)
     
     return model
 
@@ -216,14 +208,13 @@ def main():
     test_n = 500            
     test_h = 2e-0           
     test_iter = 10000      
-    val_ratio = 0.1  # 初始验证集比例
+    val_ratio = 0.1  
 
-    # WSD学习率策略参数
-    warmup_ratio = 0.05  # 5%的warm-up
-    stable_ratio = 0.15   # 50%的稳定阶段
-    decay_ratio = 0.1   # 每5%步数衰减一次
-    decay_rate = 0.5     # 衰减到原来的50%
-    min_lr = 5e-5        # 最小学习率
+    warmup_ratio = 0.05  
+    stable_ratio = 0.15  
+    decay_ratio = 0.1   
+    decay_rate = 0.5     
+    min_lr = 5e-5      
 
     # 1. 有限差分矩阵
     fd_mats = generate_test_matrices(
@@ -254,7 +245,6 @@ def main():
         pv_mats, num_samples_per_matrix=10
     )
 
-    # 按比例拆分训练/验证集（每类保持相同比例）
     train_fd, val_fd = split_samples(train_samples_fd_full, val_ratio)
     train_mix, val_mix = split_samples(train_samples_mix_full, val_ratio)
     train_fem, val_fem = split_samples(train_samples_fem_full, val_ratio)
@@ -282,23 +272,19 @@ def main():
     
     optimizer = optim.Adam(model.parameters(), lr=lr)
     
-    # 创建WSD学习率调度器
     warmup_epochs = int(epochs * warmup_ratio)
     stable_epochs = int(epochs * stable_ratio)
     decay_epochs = int(epochs * decay_ratio)
 
     def lr_lambda(epoch):
-        # Warm-up阶段: 线性增加到初始学习率
         if epoch < warmup_epochs:
             return float(epoch) / float(max(1, warmup_epochs))
-        # Stable阶段: 保持初始学习率
         elif epoch < warmup_epochs + stable_epochs:
             return 1.0
-        # Decay阶段: 按指数衰减，但不低于最小学习率
         else:
             step = (epoch - warmup_epochs - stable_epochs) // decay_epochs
             calculated_lr = lr * (decay_rate ** step)
-            return max(calculated_lr / lr, min_lr / lr)  # 确保不低于最小学习率
+            return max(calculated_lr / lr, min_lr / lr)
 
     scheduler = optim.lr_scheduler.LambdaLR(
         optimizer, lr_lambda, last_epoch=-1
@@ -310,8 +296,6 @@ def main():
         save_dir=save_dir, total_epochs=epochs, tol=tol
     )
 
-    # 生成测试数据集 - 格式一致但保持原有参数
-    # 1. PV矩阵
     fd_mat = generate_test_matrices(
         n=test_n, num=40, h_range=[1e-1, 1e-0], only_fourth_order=True
     )
@@ -323,14 +307,12 @@ def main():
         n=test_n, num=40, h_range=[1e-1, 1e-0], pv_coeff=1.0
     )
     
-    # 2. FEM矩阵
     test_matrices_fem = generate_fem_test_matrices(
         num=80, tri_ratio=0.5, tri_nx=33, circ_nr=40, circ_ntheta0=25, pv_coeff=1.0
     )
     
     test_matrices = fd_mat + mix_mat + test_matrices_pv + test_matrices_fem
     
-    # 评估模型性能
     original_cond = []
     preconditioned_cond = []
     valid_count = 0
@@ -369,49 +351,38 @@ def main():
         "有PV项的圆形FEM矩阵"
     ]
 
-    pv_coeff = 1.0  # PV项系数
-    tri_nx = 33     # 三角形网格参数
-    circ_nr = 40    # 圆形网格径向参数
-    circ_ntheta0 = 25  # 圆形网格角向参数
+    pv_coeff = 1.0 
+    tri_nx = 33    
+    circ_nr = 40   
+    circ_ntheta0 = 25
 
     for i, matrix_type in enumerate(matrix_types):
         
         if matrix_type == "强对角占优矩阵":
-            # 生成强对角占优矩阵
             A_test = generate_strict_diagonally_dominant(test_n)
-            # 生成对应的b向量
             x_true = np.random.randn(test_n).astype(np.float32)
             b_test = A_test @ x_true
             
         elif matrix_type == "纯净的四阶差分矩阵":
-            # 生成纯净的四阶差分矩阵
             A_test = generate_clean_fourth_order_matrix(test_n, test_h)
-            # 生成对应的b向量
             x_true = np.random.randn(test_n).astype(np.float32)
             b_test = A_test @ x_true
             
         elif matrix_type == "有PV项的四阶差分矩阵":
-            # 生成带PV项的四阶差分矩阵
             A_test = generate_clean_fourth_order_pv_matrix(test_n, test_h, pv_coeff)
-            # 生成对应的b向量
             x_true = np.random.randn(test_n).astype(np.float32)
             b_test = A_test @ x_true
             
         elif matrix_type == "有PV项的三角形FEM矩阵":
-            # 生成带PV项的三角形FEM矩阵
             A_test = generate_fem_triangle_matrix(nx=tri_nx, pv_coeff=pv_coeff)
-            # 生成对应的b向量
             x_true = np.random.randn(A_test.shape[0]).astype(np.float32)
             b_test = A_test @ x_true
             
         elif matrix_type == "有PV项的圆形FEM矩阵":
-            # 生成带PV项的圆形FEM矩阵
             A_test = generate_fem_circle_matrix(nr=circ_nr, ntheta0=circ_ntheta0, pv_coeff=pv_coeff)
-            # 生成对应的b向量
             x_true = np.random.randn(A_test.shape[0]).astype(np.float32)
             b_test = A_test @ x_true
         
-        # 标准化矩阵
         A_hat = normalize_matrix(A_test)
         M_operator = create_M_operator(trained_model, A_hat, device)
         
@@ -423,11 +394,8 @@ def main():
             A_test, b_test, M=M_operator, tol=1e-4, m=50, maxiter=test_iter
         )
         
-        # 计算残差
         res_gmres = np.linalg.norm(A_test @ x_gmres - b_test)
         res_fgmres = np.linalg.norm(A_test @ x_fgmres - b_test)
-        
-        # 输出结果
         print(f"{matrix_type} GMRES迭代次数: {iters_gmres}")
         print(f"{matrix_type} FGMRES迭代次数: {iters_fgmres}")
         print(f"{matrix_type} GMRES残差: {res_gmres:.4e}")
@@ -436,3 +404,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
